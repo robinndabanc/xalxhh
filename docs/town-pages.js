@@ -12,12 +12,97 @@
   function safeLink(value) { try { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password ? url.href : null; } catch { return null; } }
   function videoLink(value) {
     try {
-      const url = new URL(value.trim()); if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return null;
+      const url = new URL(value.trim()); if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.port) return null;
       const host = url.hostname.toLowerCase().replace(/^www\./, ""); let id;
-      if (host === "youtu.be") id = url.pathname.split("/").filter(Boolean)[0];
-      else if (["youtube.com", "m.youtube.com", "music.youtube.com"].includes(host)) id = url.pathname === "/watch" ? url.searchParams.get("v") : url.pathname.match(/^\/(?:shorts|live|embed)\/([A-Za-z0-9_-]{11})(?:\/|$)/)?.[1];
+      if (host === "youtu.be") id = url.pathname.match(/^\/([A-Za-z0-9_-]{11})\/?$/)?.[1];
+      else if (["youtube.com", "m.youtube.com", "music.youtube.com"].includes(host)) id = /^\/watch\/?$/.test(url.pathname) ? url.searchParams.get("v") : url.pathname.match(/^\/(?:shorts|live|embed)\/([A-Za-z0-9_-]{11})\/?$/)?.[1];
       return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? { id, url: `https://www.youtube.com/watch?v=${id}` } : null;
     } catch { return null; }
+  }
+  const videoCache = new Map(), videoRequests = new Map(), videoFailures = new Map(), videoDisplayRequests = new Set();
+  const legacyVideo = row => Boolean(row.metadata_pending) || /^youtube video title preview$/i.test((row.title || "").trim());
+  async function lookupVideo(value) {
+    const video = videoLink(value); if (!video) throw new Error("Please add a valid YouTube video link.");
+    if (videoCache.has(video.id)) return videoCache.get(video.id);
+    if (videoRequests.has(video.id)) return videoRequests.get(video.id);
+    const task = (async () => {
+      const endpoint = new URL("https://www.youtube.com/oembed"); endpoint.searchParams.set("url", video.url); endpoint.searchParams.set("format", "json");
+      const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000);
+      try {
+        const response = await fetch(endpoint, { signal: controller.signal, credentials: "omit", referrerPolicy: "no-referrer" });
+        if (!response.ok) throw new Error("YouTube couldn’t load this title. The video may be private, removed or unavailable.");
+        const data = await response.json();
+        if (data.provider_name !== "YouTube" || typeof data.title !== "string" || !data.title.trim()) throw new Error("YouTube did not return a video title.");
+        const result = { ...video, title: data.title.trim() };
+        if (videoCache.size >= 300) videoCache.delete(videoCache.keys().next().value);
+        videoCache.set(video.id, result); videoFailures.delete(video.id); return result;
+      } catch (error) {
+        if (error.name === "AbortError") throw new Error("YouTube took too long to load the title. Please try again.");
+        throw error;
+      } finally { clearTimeout(timeout); }
+    })();
+    videoRequests.set(video.id, task);
+    try { return await task; } finally { videoRequests.delete(video.id); }
+  }
+  function videoTitle(row) {
+    if (!legacyVideo(row)) return row.title;
+    const video = videoLink(row.url || "");
+    if (!video) return "Video title unavailable";
+    return videoCache.get(video?.id)?.title || (videoFailures.has(video?.id) ? "Video title unavailable" : "Loading video title…");
+  }
+  function resolveOldVideo(row) {
+    const video = videoLink(row.url || "");
+    if (!legacyVideo(row) || !video || videoCache.has(video.id) || videoDisplayRequests.has(video.id) || (videoFailures.get(video.id) || 0) > Date.now()) return;
+    videoDisplayRequests.add(video.id);
+    lookupVideo(video.url).catch(() => videoFailures.set(video.id, Date.now() + 30000)).finally(() => {
+      videoDisplayRequests.delete(video.id);
+      if (window.TownUI?.route() === "videos") renderBoard("videos");
+      if (openVideoEntry && videoLink(openVideoEntry.url || "")?.id === video.id && $("#yt-video-details").open) $("#yt-video-title").textContent = videoTitle(openVideoEntry);
+    });
+  }
+  let videoPreviewId = null, videoPreviewVersion = 0, manualVideoId = null, openVideoEntry = null;
+  function hideManualVideoDetails() {
+    manualVideoId = null; $("#yt-manual-details").hidden = true;
+    const field = $("#yt-manual-title"); field.value = ""; field.required = false; field.disabled = true;
+    $("#yt-manual-details button").disabled = true;
+  }
+  function showManualVideoDetails(video) {
+    if (manualVideoId !== video.id) hideManualVideoDetails();
+    manualVideoId = video.id; $("#yt-manual-details").hidden = false; $("#yt-manual-title").required = true; availability();
+  }
+  async function previewVideo() {
+    const raw = $("#yt-link").value.trim(), video = videoLink(raw), status = $("#yt-link-status");
+    if (!video) { ++videoPreviewVersion; videoPreviewId = null; hideManualVideoDetails(); status.textContent = raw ? "Please add a valid YouTube video link." : ""; return; }
+    if (videoPreviewId === video.id) return;
+    if (manualVideoId && manualVideoId !== video.id) hideManualVideoDetails();
+    videoPreviewId = video.id; const version = ++videoPreviewVersion; status.textContent = "Loading video title…";
+    try {
+      const result = await lookupVideo(video.url); if (version !== videoPreviewVersion) return;
+      hideManualVideoDetails(); status.textContent = result.title;
+    } catch {
+      if (version !== videoPreviewVersion) return;
+      videoPreviewId = null; showManualVideoDetails(video); status.textContent = "Add the video title below to submit.";
+    }
+  }
+  function initVideoDetails() {
+    const style = document.createElement("style"); style.textContent = `
+      #yt-cloud-preview .yt-lookup-status{margin:6px 0 0;font-size:clamp(12px,1.5vw,16px);line-height:1.35;overflow-wrap:anywhere}
+      #yt-cloud-preview .yt-manual-details{margin:0 6.5% 24px;padding:22px;border-radius:16px;background:#fff8ed;color:#4d625f}
+      #yt-cloud-preview .yt-manual-details h2{font:inherit;font-size:22px;margin:0 0 10px}
+      #yt-cloud-preview .yt-manual-details p{font-size:14px;line-height:1.5;margin:0 0 18px}
+      #yt-cloud-preview .yt-manual-details label{display:block;font-size:16px}
+      #yt-cloud-preview .yt-manual-details input{display:block;width:100%;min-height:48px;margin-top:6px;padding:10px 12px;border:2px solid #eac0ad;border-radius:8px;background:#fffdf4;color:#4d625f;font-size:16px}
+      #yt-cloud-preview .yt-manual-details button{min-height:44px;margin-top:18px;padding:10px 18px;border:0;border-radius:9px;background:#e9ba9c;color:#4d625f}`;
+    $("#yt-cloud-preview").append(style);
+    const status = document.createElement("p"); status.id = "yt-link-status"; status.className = "yt-lookup-status"; status.setAttribute("role", "status");
+    $("#yt-link").parentElement.append(status); $("#yt-link").setAttribute("aria-describedby", status.id);
+    const panel = document.createElement("section"); panel.id = "yt-manual-details"; panel.className = "yt-manual-details"; panel.hidden = true; panel.setAttribute("aria-labelledby", "yt-manual-heading");
+    const heading = document.createElement("h2"); heading.id = "yt-manual-heading"; heading.textContent = "Add a video title";
+    const hint = document.createElement("p"); hint.textContent = "Automatic lookup is unavailable. Add the title to submit your YouTube link.";
+    const label = document.createElement("label"); label.htmlFor = "yt-manual-title"; label.textContent = "Video title";
+    const input = document.createElement("input"); input.id = "yt-manual-title"; input.name = "video_title"; input.maxLength = 120; input.setAttribute("form", "yt-form"); input.dataset.videoManual = "true"; input.disabled = true; label.append(input);
+    const button = document.createElement("button"); button.type = "submit"; button.setAttribute("form", "yt-form"); button.dataset.videoManual = "true"; button.disabled = true; button.textContent = "Submit video";
+    panel.append(heading, hint, label, button); $("#yt-form-page").append(panel);
   }
   const songLink = value => window.TownSpotify.parse(value);
   let songPreviewId = null, songPreviewVersion = 0, manualSongId = null;
@@ -63,8 +148,9 @@
       if (url) { link.href = url; link.textContent = "Open game link ↗"; } else link.removeAttribute("href");
       $("#gh-detail-dialog").showModal();
     } else if (kind === "videos") {
-      $("#yt-video-title").textContent = row.title; $("#yt-video-author").textContent = `Suggested by ${row.display_name}`;
+      openVideoEntry = row; $("#yt-video-title").textContent = videoTitle(row); $("#yt-video-author").textContent = `Suggested by ${row.display_name}`;
       $("#yt-watch").href = safeLink(row.url); $("#yt-video-details").showModal();
+      resolveOldVideo(row);
     } else {
       $("#sp-detail-title").textContent = row.title; $("#sp-detail-artist").textContent = row.artist || "Artist unavailable";
       $("#sp-detail-name").textContent = `Suggested by ${row.display_name}`; $("#sp-spotify").href = safeLink(row.url);
@@ -73,13 +159,13 @@
   }
   function card(kind, row, index) {
     const button = document.createElement("button"); button.type = "button"; button.dataset.entryId = row.id;
-    button.setAttribute("aria-label", `Open ${row.title}${row.artist ? ` by ${row.artist}` : ""}`);
+    button.setAttribute("aria-label", `Open ${kind === "videos" ? videoTitle(row) : row.title}${row.artist ? ` by ${row.artist}` : ""}`);
     if (kind === "games") {
       button.className = "gh-note"; button.style.setProperty("--gh-angle", `${angles[index]}deg`);
       const content = textSpan("gh-note-text", ""); content.append(textSpan("gh-note-title", row.title), textSpan("gh-note-name", `by ${row.display_name}`));
       if (safeLink(row.url)) content.append(textSpan("gh-note-link", "view game ↗")); button.append(content);
     } else if (kind === "videos") {
-      button.className = "yt-cloud"; const content = textSpan("yt-cloud-text", ""); content.append(textSpan("yt-cloud-title", row.title), textSpan("yt-cloud-name", `by ${row.display_name}`)); button.append(content);
+      button.className = "yt-cloud"; const content = textSpan("yt-cloud-text", ""); content.append(textSpan("yt-cloud-title", videoTitle(row)), textSpan("yt-cloud-name", `by ${row.display_name}`)); button.append(content);
     } else {
       button.className = "sp-note"; button.style.setProperty("--sp-angle", `${angles[index]}deg`);
       const content = textSpan("sp-note-text", ""); content.append(textSpan("sp-song-title", row.title), textSpan("sp-song-artist", row.artist || "Artist preview")); button.append(content);
@@ -94,13 +180,20 @@
     $(`#${spec.previous}`).disabled = page[kind] === 0; $(`#${spec.next}`).disabled = page[kind] + 1 >= total;
     $(`#${spec.count}`).textContent = rows.length ? `${page[kind] + 1} / ${total}` : "";
     const notice = kind === "games" ? $("#gh-board-status") : kind === "videos" ? $("#yt-board-notice") : $("#sp-board-notice");
-    notice.textContent = store.error || (visible.some(row => row.metadata_pending) ? kind === "songs" ? "Some older song suggestions still need their song details refreshed." : "This link uses video title placeholders. Live title lookup is not connected yet." : "");
+    let boardMessage = store.error || "";
+    if (!boardMessage && kind === "videos") {
+      const unresolved = visible.filter(row => legacyVideo(row) && !videoCache.has(videoLink(row.url || "")?.id));
+      if (unresolved.length) boardMessage = unresolved.some(row => !videoLink(row.url || "") || videoFailures.has(videoLink(row.url || "")?.id)) ? "A video title couldn’t be loaded. You can still open its YouTube link." : "Loading video titles…";
+    }
+    if (!boardMessage && kind === "songs" && visible.some(row => row.metadata_pending)) boardMessage = "Some older song suggestions still need their song details refreshed.";
+    notice.textContent = boardMessage;
+    if (kind === "videos" && window.TownUI?.route() === "videos") visible.forEach(resolveOldVideo);
   }
   function availability() {
     const available = ["preview", "shared"].includes(store.mode);
     for (const [kind, id] of [["games", "gh-form"], ["videos", "yt-form"], ["songs", "sp-form"], ["wheel", "tw-form"]]) {
       Array.from($(`#${id}`).elements).filter(control => control.matches("input,button")).forEach(control => {
-        control.disabled = !available || busy.has(kind) || (control.dataset.songManual === "true" && $("#sp-manual-details").hidden);
+        control.disabled = !available || busy.has(kind) || (control.dataset.songManual === "true" && $("#sp-manual-details").hidden) || (control.dataset.videoManual === "true" && $("#yt-manual-details").hidden);
       });
     }
     $("#tw-spin").disabled = !available || spinning || !store.list("wheel").length;
@@ -109,8 +202,8 @@
     if (busy.has(kind)) return;
     const prefix = { games: "gh", videos: "yt", songs: "sp" }[kind], form = $(`#${prefix}-form`), status = $(`#${prefix}-form-status`);
     if (!form.reportValidity()) return;
-    const name = form.elements.display_name.value.trim(); let values, focusSongDetails = false;
-    busy.add(kind); availability(); status.textContent = kind === "songs" ? "Loading song and artist…" : "Adding your suggestion…"; status.classList.remove("error");
+    const name = form.elements.display_name.value.trim(); let values, focusSongDetails = false, focusVideoDetails = false;
+    busy.add(kind); availability(); status.textContent = kind === "songs" ? "Loading song and artist…" : kind === "videos" ? "Loading video title…" : "Adding your suggestion…"; status.classList.remove("error");
     try {
       if (!name) throw new Error("Please add your name.");
       if (kind === "games") {
@@ -119,8 +212,14 @@
         values = { kind: "games", title, url, display_name: name };
       } else if (kind === "videos") {
         const parsed = videoLink(form.elements.url.value); if (!parsed) throw new Error("Please add a valid YouTube video link.");
-        const known = examples.videos.find(item => item.id === parsed.id);
-        values = { kind: "cat-videos", title: known?.title || "YouTube video title preview", url: parsed.url, display_name: name, metadata_pending: !known };
+        let title;
+        if (manualVideoId === parsed.id) {
+          title = $("#yt-manual-title").value.trim(); if (!title) { focusVideoDetails = true; throw new Error("Please add the video title below."); }
+        } else {
+          try { title = (await lookupVideo(parsed.url)).title; }
+          catch { showManualVideoDetails(parsed); focusVideoDetails = true; throw new Error("Add the video title below, then choose Submit video."); }
+        }
+        values = { kind: "cat-videos", title, url: parsed.url, display_name: name, metadata_pending: false };
       } else {
         const parsed = songLink(form.elements.url.value); if (!parsed) throw new Error("Please add a Spotify song link beginning open.spotify.com/track/.");
         let song;
@@ -138,9 +237,9 @@
         values = { kind: "songs", title: song.title, artist: song.artist, url: song.url, display_name: name, metadata_pending: false };
       }
       status.textContent = "Adding your suggestion…";
-      await store.add(values); page[kind] = 0; form.reset(); if (kind === "songs") hideManualSongDetails(); status.textContent = ""; window.TownUI.navigate(kind);
+      await store.add(values); page[kind] = 0; form.reset(); if (kind === "songs") hideManualSongDetails(); if (kind === "videos") { hideManualVideoDetails(); videoPreviewId = null; ++videoPreviewVersion; $("#yt-link-status").textContent = ""; } status.textContent = ""; window.TownUI.navigate(kind);
     } catch (error) { status.textContent = error.message; status.classList.add("error"); }
-    finally { busy.delete(kind); availability(); if (focusSongDetails) $("#sp-manual-title").focus(); }
+    finally { busy.delete(kind); availability(); if (focusSongDetails) $("#sp-manual-title").focus(); if (focusVideoDetails) $("#yt-manual-title").focus(); }
   }
   let marked = new Set([12]), previousRevision = null, wonLines = new Set(), confettiTimer;
   const bingoLines = [[0, 6, 12, 18, 24], [4, 8, 12, 16, 20]];
@@ -224,6 +323,7 @@
     finally { busy.delete("wheel"); availability(); }
   }
   function init() {
+    initVideoDetails();
     const notice = document.createElement("p"); notice.id = "gh-board-status"; notice.className = "town-board-status"; notice.setAttribute("role", "status"); $("#gh-board").append(notice);
     for (const kind of Object.keys(boards)) {
       const spec = boards[kind], prefix = { games: "gh", videos: "yt", songs: "sp" }[kind];
@@ -239,6 +339,8 @@
     $("#sp-link").addEventListener("input", previewSong);
     $("#sp-link").addEventListener("change", previewSong);
     $("#sp-song-details").addEventListener("close", () => $("#sp-detail-player").replaceChildren());
+    $("#yt-link").addEventListener("input", previewVideo); $("#yt-link").addEventListener("change", previewVideo);
+    $("#yt-video-details").addEventListener("close", () => { openVideoEntry = null; });
     $("#tw-spin").addEventListener("click", spin); $("#tw-add").addEventListener("click", addWheel); $("#tw-form").addEventListener("submit", event => { event.preventDefault(); addWheel(); });
     $("#tw-suggestion").addEventListener("keydown", event => { if (event.key === "Enter" && !event.isComposing) { event.preventDefault(); addWheel(); } });
     for (const [kind, listId] of [["videos", "yt-example-links"], ["songs", "sp-example-links"]]) examples[kind].forEach(item => { const option = document.createElement("option"); option.value = kind === "videos" ? `https://www.youtube.com/watch?v=${item.id}` : `https://open.spotify.com/track/${item.id}`; option.label = `${item.title}${item.artist ? ` — ${item.artist}` : ""}`; $(`#${listId}`).append(option); });
@@ -246,10 +348,11 @@
   }
   function route(value) {
     const [kind, form] = value.split("/");
+    if (value === "videos/new") previewVideo(); else { videoPreviewId = null; ++videoPreviewVersion; }
     if (value === "songs/new") previewSong(); else clearSongPreview();
     for (const [name, spec] of Object.entries(boards)) { $(`#${spec.board}`).hidden = name === kind && form === "new"; $(`#${spec.form}`).hidden = !(name === kind && form === "new"); }
     render(); requestAnimationFrame(drawWheel);
   }
   function render() { Object.keys(boards).forEach(renderBoard); renderBingo(); drawWheel(); availability(); }
-  window.TownPages = { init, route, render, safeLink, videoLink, songLink };
+  window.TownPages = { init, route, render, safeLink, videoLink, songLink, lookupVideo, videoTitle };
 })();
