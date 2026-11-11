@@ -1,9 +1,0 @@
-{
-  "name": "xalxhh-community-island",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "description": "Illustrated GitHub Pages website with shared Supabase suggestions and Spotify metadata.",
-  "engines": { "node": ">=24" },
-  "scripts": { "test": "node --test tests/*.test.mjs" }
-}

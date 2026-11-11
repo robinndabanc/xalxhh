@@ -1,8 +1,0 @@
-# Public song metadata endpoint. It never reads private data or performs moderation.
-# Database tables still enforce their own authenticated staff rules through RLS.
-project_id = "xalxhh-town"
-
-[functions.spotify-track]
-enabled = true
-verify_jwt = false
-entrypoint = "./functions/spotify-track/index.ts"
