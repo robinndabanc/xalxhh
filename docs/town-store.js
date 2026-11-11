@@ -126,15 +126,36 @@
     if (hash !== "64c288f144c784614bd6862c259434becd110523ba1b0b617c1fad8e71f94970") throw new Error("That password isn’t correct. Please try again.");
     previewAdmin = true; emit();
   }
-  async function signIn(email) {
+  async function signIn(password) {
     if (mode !== "shared" || !client) throw new Error("Admin sign-in is unavailable.");
-    const redirect = new URL(location.href); redirect.hash = ""; redirect.searchParams.set("page", "admin");
-    const result = await client.auth.signInWithOtp({ email, options: { emailRedirectTo: redirect.href } });
-    if (result.error) throw new Error("The sign-in link could not be sent. Please try again.");
+    if (typeof password !== "string" || !password || password.length > 200) throw new Error("Please enter the admin password.");
+    const endpoint = config.adminLoginUrl || `${config.supabaseUrl.replace(/\/+$/, "")}/functions/v1/admin-password-login`;
+    if (new URL(endpoint).protocol !== "https:") throw new Error("Admin sign-in requires an HTTPS function URL.");
+    const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 15000);
+    let data;
+    try {
+      const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }), signal: controller.signal });
+      data = await response.json().catch(() => null);
+      if (response.status === 404) throw new Error("The admin login function has not been deployed at this address.");
+      if (!response.ok) throw new Error(typeof data?.error === "string" ? data.error : "Admin sign-in failed. Please try again.");
+      if (typeof data?.access_token !== "string" || !data.access_token || typeof data?.refresh_token !== "string" || !data.refresh_token) throw new Error("The login service returned an invalid session.");
+    } catch (error) {
+      if (error.name === "AbortError") throw new Error("Sign-in took too long. Please try again.");
+      if (error instanceof TypeError) throw new Error("The admin login service could not be reached. Please check its deployment.");
+      throw error;
+    } finally { clearTimeout(timeout); }
+    const result = await client.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+    if (result.error || !result.data.session?.user) throw new Error("The admin session could not be started. Please try again.");
+    user = result.data.session.user; staffRole = null; await resolveStaff();
+    if (!isAdmin()) {
+      await client.auth.signOut({ scope: "local" }); user = null; staffRole = null; entries = []; emit();
+      throw new Error("The shared account has not been given admin access in Supabase.");
+    }
+    await refresh(); emit();
   }
   async function signOut() {
     if (mode === "preview") { previewAdmin = false; emit(); return; }
-    const result = await client.auth.signOut(); if (result.error) throw new Error("Sign-out failed. Please try again.");
+    const result = await client.auth.signOut({ scope: "local" }); if (result.error) throw new Error("Sign-out failed. Please try again.");
     user = null; staffRole = null; entries = []; emit(); await refresh();
   }
   setInterval(() => { if (mode === "shared" && !document.hidden) refresh(); }, 5000);
