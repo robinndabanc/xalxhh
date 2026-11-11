@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#80c8e5">
+  <meta name="description" content="xalxhh's community island: suggest games, videos and songs, spin the wheel, and play viewer bingo.">
+  <title>xalxhh's little town</title>
+  <link rel="stylesheet" href="town.css">
+  <link rel="stylesheet" href="design-pages.css">
+  <script src="config.js" defer></script>
+  <script src="preview-data.js" defer></script>
+  <script src="town-designs.js" defer></script>
+  <script src="town-store.js" defer></script>
+  <script src="town-spotify.js" defer></script>
+  <script src="town-pages.js" defer></script>
+  <script src="town-admin.js" defer></script>
+  <script src="town.js" defer></script>
+</head>
+<body data-room="home">
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><div class="site-header-inner"><span class="brand">xalxhh's little town</span><a id="header-back-town" href="#home" hidden>Back to town</a></div></header>
+  <main id="content" tabindex="-1">
+    <section data-view="home" aria-label="xalxhh's community island">
+      <figure class="town-map">
+        <svg viewBox="0 0 2160 1620" xmlns="http://www.w3.org/2000/svg" aria-labelledby="map-title map-description">
+          <title id="map-title">xalxhh's little town</title>
+          <desc id="map-description">Choose the tent for spin the wheel, the pink house for video suggestions, the red-roof house for game suggestions, the teal house for viewer bingo, or the blue house for song suggestions.</desc>
+          <image href="assets/town-map.png" width="2160" height="1620"/>
+          <a href="#wheel" class="map-location" aria-label="Tent: spin the wheel" data-center="690,526"><title>Spin the wheel</title><rect class="map-hit-target"/><polygon points="588,446 792,446 792,597 588,597"/></a>
+          <a href="#videos" class="map-location" aria-label="Pink house: suggest YouTube videos" data-center="1410,575"><title>Suggest YouTube videos</title><rect class="map-hit-target"/><polygon points="1307,562 1335,513 1350,501 1354,485 1378,485 1381,500 1476,500 1500,516 1515,564 1499,572 1499,659 1321,659 1321,572"/></a>
+          <a href="#games" class="map-location" aria-label="Red-roof house: suggest games" data-center="1017,865"><title>Suggest games</title><rect class="map-hit-target"/><polygon points="914,857 943,789 1008,789 1026,767 1048,789 1098,789 1116,857 1102,863 1102,963 923,963 923,863"/></a>
+          <a href="#bingo" class="map-location" aria-label="Teal house: viewer bingo" data-center="1445,948"><title>Viewer bingo</title><rect class="map-hit-target"/><polygon points="1341,904 1371,851 1420,851 1447,835 1465,851 1518,851 1548,906 1530,912 1530,1036 1351,1036 1351,912"/></a>
+          <a href="#songs" class="map-location" aria-label="Blue house: suggest songs" data-center="640,1110"><title>Suggest songs</title><rect class="map-hit-target"/><polygon points="532,1090 552,1056 598,1027 626,1012 657,1020 690,1045 726,1059 749,1099 743,1199 537,1199"/></a>
+        </svg>
+      </figure>
+    </section>
+    <div id="games-handwritten-preview" aria-label="Game suggestions" data-view="games" hidden>
+  
+  <section id="gh-board" aria-label="Pinned game suggestions">
+    <div class="gh-scene">
+      <img class="gh-art" data-gh-art="board" width="1620" height="2160" alt="Your painted red-roof house and cream suggestion board." src="assets/games/board.webp">
+      <button type="button" id="gh-open-form" class="gh-window" aria-label="Add your suggestion"></button>
+      <div id="gh-notes" class="gh-notes"></div>
+      <button type="button" id="gh-previous" class="gh-page-arrow gh-previous" aria-label="Previous notes" disabled></button>
+      <button type="button" id="gh-next" class="gh-page-arrow gh-next" aria-label="Next notes" disabled></button>
+      <p id="gh-page-number" class="gh-page-number" aria-live="polite"></p>
+    </div>
+  </section>
+  <section id="gh-form-page" aria-label="Game suggestion form using your original handwriting" hidden>
+    <div class="gh-scene">
+      <img class="gh-art gh-full-form" data-gh-art="form" width="1620" height="2160" alt="Your original handwritten game title, link, your name and submit artwork, with text boxes added underneath the labels." src="assets/games/submission-form.webp">
+      <div class="gh-mobile-roof" aria-hidden="true"><img data-gh-art="form" width="1620" height="2160" alt="" src="assets/games/submission-form.webp"></div>
+      <form id="gh-form" class="gh-form">
+        <div class="gh-field gh-title-field"><label for="gh-title"><span class="gh-sr">Game title</span><img class="gh-label-art" data-gh-art="titleLabel" alt="" aria-hidden="true" src="assets/games/label-title.webp"></label><input id="gh-title" name="title" maxlength="120" required autocomplete="off"></div>
+        <div class="gh-field gh-link-field"><label for="gh-link"><span class="gh-sr">Link, optional</span><img class="gh-label-art" data-gh-art="linkLabel" alt="" aria-hidden="true" src="assets/games/label-link.webp"></label><input id="gh-link" name="url" type="url" maxlength="2048" placeholder="https://…"></div>
+        <div class="gh-field gh-name-field"><label for="gh-name"><span class="gh-sr">Your name</span><img class="gh-label-art" data-gh-art="nameLabel" alt="" aria-hidden="true" src="assets/games/label-name.webp"></label><input id="gh-name" name="display_name" maxlength="60" required autocomplete="off"></div>
+        <button type="button" class="gh-submit" aria-label="Preview your suggestion on a pinned note"><span class="gh-sr">Submit</span></button>
+      <p id="gh-form-status" class="gh-form-status" role="status"></p></form>
+    </div>
+  </section>
+<dialog id="gh-detail-dialog" class="gh-dialog" aria-labelledby="gh-detail-title" aria-describedby="gh-detail-name"><h2 id="gh-detail-title"></h2><p id="gh-detail-name"></p><a id="gh-detail-link" target="_blank" rel="noopener noreferrer" hidden>Open game link ↗</a><button id="gh-close-details" type="button">Back to the board</button></dialog></div>
+
+<div id="yt-cloud-preview" aria-label="YouTube video suggestions" data-view="videos" hidden>
+  
+  <section id="yt-board" aria-label="YouTube video suggestions">
+    <div class="yt-scene">
+      <img class="yt-art" data-yt-art="board" width="1620" height="2160" alt="Your peach roof and heart window above the video suggestion board." src="assets/videos/board.webp">
+      <button type="button" id="yt-open-form" class="yt-heart" aria-label="Add your YouTube suggestion"></button>
+      <div id="yt-cloud-grid" class="yt-grid" aria-label="Six video clouds in two columns and three rows"></div>
+      <button type="button" id="yt-previous" class="yt-arrow yt-previous" aria-label="Previous video suggestions" disabled></button>
+      <button type="button" id="yt-next" class="yt-arrow yt-next" aria-label="Next video suggestions" disabled></button>
+      <p id="yt-page-count" class="yt-page-count" aria-live="polite"></p>
+    </div>
+    <p id="yt-board-notice" class="yt-board-notice" role="status"></p>
+  </section>
+  <section id="yt-form-page" aria-label="Suggest a YouTube video" hidden>
+    <div class="yt-scene">
+      <img class="yt-art yt-full-form" data-yt-art="form" width="1620" height="2160" alt="Your original handwritten YouTube link, your name and submit labels, with text boxes added." src="assets/videos/submission-form.webp">
+      <div class="yt-mobile-roof"><img data-yt-art="form" width="1620" height="2160" alt="" aria-hidden="true" src="assets/videos/submission-form.webp"><button type="button" id="yt-mobile-back-board" class="yt-heart" aria-label="Return to the video board"></button></div>
+      <form id="yt-form" class="yt-form">
+        <div class="yt-field yt-link-field"><label for="yt-link"><span class="yt-sr">YouTube link</span><img class="yt-label-art" data-yt-art="linkLabel" alt="" aria-hidden="true" src="assets/videos/label-link.webp"></label><input id="yt-link" name="url" type="url" maxlength="2048" placeholder="https://youtu.be/…" list="yt-example-links" autocomplete="off" required><datalist id="yt-example-links"></datalist></div>
+        <div class="yt-field yt-name-field"><label for="yt-name"><span class="yt-sr">Your name</span><img class="yt-label-art" data-yt-art="nameLabel" alt="" aria-hidden="true" src="assets/videos/label-name.webp"></label><input id="yt-name" name="display_name" maxlength="60" autocomplete="off" required></div>
+        <button type="button" id="yt-submit" class="yt-submit" aria-label="Preview this YouTube suggestion"><span class="yt-sr">Submit</span></button>
+        <p id="yt-form-status" class="yt-status" role="status"></p>
+      </form>
+      <button type="button" id="yt-back-board" class="yt-heart" aria-label="Return to the video board"></button>
+    </div>
+  </section>
+  <dialog id="yt-video-details" class="yt-dialog" aria-labelledby="yt-video-title">
+    <h2 id="yt-video-title"></h2><p id="yt-video-author"></p>
+    <div class="yt-dialog-actions"><a id="yt-watch" class="yt-watch" target="_blank" rel="noopener noreferrer">Watch on YouTube ↗</a><button id="yt-close-details" class="yt-close" type="button">Back to the clouds</button></div>
+  </dialog>
+</div>
+
+<div id="spotify-song-preview" aria-label="Song suggestions" data-view="songs" hidden>
+  
+  <section id="sp-board" aria-label="Song suggestions">
+    <div class="sp-scene">
+      <img class="sp-art" data-sp-art="board" width="1620" height="2160" alt="Your yellow roof, hanging lightbulb and handwritten add your suggestion label above the blue song suggestion board." src="assets/songs/board.webp">
+      <button type="button" id="sp-open-form" class="sp-lamp cursor-interaction" aria-label="Add your song suggestion"></button>
+      <div id="sp-note-grid" class="sp-grid" aria-label="Nine song notes in three columns and three rows"></div>
+      <button type="button" id="sp-previous" class="sp-arrow sp-previous cursor-interaction" aria-label="Previous song suggestions" disabled></button>
+      <button type="button" id="sp-next" class="sp-arrow sp-next cursor-interaction" aria-label="Next song suggestions" disabled></button>
+      <p id="sp-page-count" class="sp-page-count" aria-live="polite"></p>
+    </div>
+    <p id="sp-board-notice" class="sp-board-notice" role="status"></p>
+  </section>
+  <section id="sp-form-page" aria-label="Suggest a song" hidden>
+    <div class="sp-scene">
+      <img class="sp-art sp-full-form" data-sp-art="form" width="1620" height="2160" alt="Your original handwritten Spotify link, your name and submit labels, with text boxes added." src="assets/songs/submission-form.webp">
+      <div class="sp-mobile-roof"><img data-sp-art="form" width="1620" height="2160" alt="" aria-hidden="true" src="assets/songs/submission-form.webp"><button type="button" id="sp-mobile-back-board" class="sp-lamp cursor-interaction" aria-label="Return to song suggestions"></button></div>
+      <form id="sp-form" class="sp-form">
+        <div class="sp-field sp-link-field"><label for="sp-link"><span class="sp-sr">Spotify song link</span><img class="sp-label-art" data-sp-art="linkLabel" alt="" aria-hidden="true" src="assets/songs/label-link.webp"></label><input id="sp-link" name="url" type="url" maxlength="2048" placeholder="https://open.spotify.com/track/…" list="sp-example-links" autocomplete="off" aria-describedby="sp-link-status" required><datalist id="sp-example-links"></datalist><p id="sp-link-status" class="sp-link-status" role="status"></p></div>
+        <div class="sp-field sp-name-field"><label for="sp-name"><span class="sp-sr">Your name</span><img class="sp-label-art" data-sp-art="nameLabel" alt="" aria-hidden="true" src="assets/songs/label-name.webp"></label><input id="sp-name" name="display_name" maxlength="60" autocomplete="off" required></div>
+        <button type="button" id="sp-submit" class="sp-submit cursor-interaction" aria-label="Preview this song suggestion"><span class="sp-sr">Submit</span></button>
+        <p id="sp-form-status" class="sp-status" role="status"></p>
+      </form>
+      <button type="button" id="sp-back-board" class="sp-lamp cursor-interaction" aria-label="Return to song suggestions"></button>
+    </div>
+    <section id="sp-manual-details" class="sp-manual-details" aria-labelledby="sp-manual-heading" hidden>
+      <h2 id="sp-manual-heading">Add song details</h2>
+      <p>Automatic lookup is unavailable. You can still submit your Spotify link by adding the title and artist.</p>
+      <div class="sp-manual-fields">
+        <label for="sp-manual-title">Song title<input id="sp-manual-title" name="song_title" form="sp-form" maxlength="120" data-song-manual="true" disabled></label>
+        <label for="sp-manual-artist">Artist<input id="sp-manual-artist" name="song_artist" form="sp-form" maxlength="200" data-song-manual="true" disabled></label>
+      </div>
+      <button type="submit" form="sp-form" data-song-manual="true" disabled>Submit song</button>
+    </section>
+    <section id="sp-live-preview" class="sp-live-preview" aria-label="Spotify song preview" hidden>
+      <p id="sp-preview-caption"></p><div id="sp-preview-player"></div>
+      <a id="sp-preview-link" target="_blank" rel="noopener noreferrer">Open in Spotify ↗</a>
+    </section>
+  </section>
+  <dialog id="sp-song-details" class="sp-dialog" aria-labelledby="sp-detail-title" aria-describedby="sp-detail-artist">
+    <h2 id="sp-detail-title"></h2><p id="sp-detail-artist" class="sp-detail-artist"></p><p id="sp-detail-name" class="sp-detail-name"></p>
+    <div id="sp-detail-player" class="sp-detail-player"></div>
+    <div class="sp-dialog-actions"><a id="sp-spotify" class="sp-spotify cursor-interaction" target="_blank" rel="noopener noreferrer">Open in Spotify ↗</a><button id="sp-close-details" class="sp-close cursor-interaction" type="button">Back to the notes</button></div>
+  </dialog>
+</div>
+
+<div id="cat-bingo-preview" aria-label="Viewer bingo" data-view="bingo" hidden>
+  
+  <div class="cb-scene">
+    <div class="cb-roof-space" aria-hidden="true"></div>
+    <section class="cb-content" aria-labelledby="cb-title">
+      <h1 id="cb-title">viewer bingo</h1>
+      <div id="cb-grid" class="cb-grid" aria-label="Five by five viewer bingo card"></div>
+      <p id="cb-status" class="cb-sr" aria-live="polite"></p>
+    </section>
+    <div id="cb-confetti" class="cb-confetti" aria-hidden="true"></div>
+  </div>
+  <dialog id="cb-celebration" class="cb-celebration" aria-labelledby="cb-bingo-title">
+    <h2 id="cb-bingo-title">BINGO!</h2>
+    <button type="button" id="cb-close" class="cb-close cursor-interaction">Keep playing</button>
+  </dialog>
+</div>
+
+<div id="town-wheel-preview" aria-label="Spin the wheel" data-view="wheel" hidden>
+  
+  <div class="tw-scene">
+    <h1 class="tw-sr">Spin the wheel</h1>
+    <div class="tw-banner-space" aria-hidden="true"></div>
+    <div class="tw-content">
+      <div class="tw-wheel" id="tw-wheel">
+        <div class="tw-disk"><canvas id="tw-canvas" class="tw-canvas" role="img" aria-label="Suggestion wheel"></canvas></div>
+        <span class="tw-hub" aria-hidden="true"></span><span class="tw-pointer" aria-hidden="true"></span>
+      </div>
+      <button type="button" id="tw-spin" class="tw-spin cursor-interaction">spin the wheel</button>
+      <output id="tw-result" class="tw-sr" aria-live="polite"></output>
+      <form id="tw-form" class="tw-suggest">
+        <label for="tw-suggestion" class="tw-label">suggest something for the wheel</label>
+        <div class="tw-input-row"><input id="tw-suggestion" class="tw-input" type="text" name="suggestion" maxlength="80" autocomplete="off" placeholder="Your suggestion…" required><button type="button" id="tw-add" class="tw-add cursor-interaction">Add to wheel</button></div>
+        <p id="tw-added" class="tw-added" role="status"></p>
+      </form>
+      <ol id="tw-options" class="tw-option-list" aria-label="Numbered wheel suggestions" hidden></ol>
+    </div>
+  </div>
+  <dialog id="tw-picked" class="tw-picked" aria-labelledby="tw-picked-title" aria-describedby="tw-picked-name"><h2 id="tw-picked-title">Picked:</h2><p id="tw-picked-name" class="tw-picked-name"></p><button type="button" id="tw-picked-close" class="tw-picked-close cursor-interaction">Keep spinning</button></dialog>
+</div>
+
+    <section id="admin-room" class="town-admin" data-view="admin" aria-labelledby="admin-title" hidden>
+      <div class="admin-identity-row"><h1 id="admin-title">town admin</h1><button id="admin-signout" type="button" hidden>Sign out</button></div>
+      <p id="admin-mode-note" class="admin-mode-note"></p>
+      <div id="admin-login" class="admin-panel">
+        <h2>Admin login</h2>
+        <div id="admin-preview-access" hidden><form id="admin-password-form"><div class="admin-login-row"><label for="admin-password">Admin password<input id="admin-password" type="password" autocomplete="current-password" maxlength="200" required></label><button id="admin-preview-login" type="submit">Log in</button></div></form></div>
+        <form id="admin-email-form" hidden><div class="admin-login-row"><label for="admin-email">Email address<input id="admin-email" type="email" autocomplete="email" maxlength="254" required></label><button type="submit">Send sign-in link</button></div></form>
+        <p id="admin-login-status" class="admin-status" role="status"></p>
+      </div>
+      <div id="admin-tools" hidden>
+        <p id="admin-identity"></p>
+        <section class="admin-panel" aria-labelledby="admin-suggestions-title">
+          <div class="admin-toolbar"><h2 id="admin-suggestions-title">Suggestions</h2><label for="admin-page-filter">Suggestion page<select id="admin-page-filter"><option value="games">Game suggestions</option><option value="videos">Video suggestions</option><option value="songs">Song suggestions</option><option value="wheel">Spin the wheel</option></select></label></div>
+          <p id="admin-entry-count" class="admin-hint"></p>
+          <div id="admin-entry-list" class="admin-entry-list"></div>
+          <p id="admin-entry-status" class="admin-status" role="status"></p>
+        </section>
+        <section class="admin-panel" aria-labelledby="admin-bingo-title">
+          <h2 id="admin-bingo-title">Bingo topics</h2><p class="admin-hint">Keep topics short so they fit on the card. The middle space stays free.</p>
+          <form id="admin-bingo-form"><div id="admin-bingo-topics" class="admin-bingo-grid"></div><button id="admin-save-bingo" type="submit">Save bingo topics</button></form>
+          <p id="admin-bingo-status" class="admin-status" role="status"></p>
+        </section>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer"><p>xalxhh's community island 🐾</p><div class="footer-links"><a href="https://www.twitch.tv/xalxhh" target="_blank" rel="noopener noreferrer">Watch on Twitch ↗</a><a id="discord-link" target="_blank" rel="noopener noreferrer" hidden>Join Discord ↗</a><a href="#admin">Admin</a></div></footer>
+  <noscript><p>Please enable JavaScript to explore the town.</p></noscript>
+</body>
+</html>
