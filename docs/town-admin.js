@@ -36,26 +36,25 @@
     const preview = store.mode === "preview", admin = store.isAdmin();
     $("#admin-mode-note").textContent = ["preview", "shared"].includes(store.mode) ? "" : store.mode === "loading" ? "" : "Admin access is temporarily unavailable.";
     $("#admin-mode-note").hidden = !$("#admin-mode-note").textContent;
-    $("#admin-preview-access").hidden = !preview; $("#admin-email-form").hidden = store.mode !== "shared" || Boolean(store.user);
+    $("#admin-preview-access").hidden = !["preview", "shared"].includes(store.mode);
+    const emailForm = $("#admin-email-form"); if (emailForm) emailForm.hidden = true;
     $("#admin-login").hidden = admin; $("#admin-tools").hidden = !admin; $("#admin-signout").hidden = !(admin || store.user);
     if (store.error) message("admin-login-status", store.error, true);
     if (store.mode === "shared" && store.user && !admin) message("admin-login-status", "You’re signed in, but this account has not been given streamer or moderator access.");
     if (!admin) { $("#admin-entry-list").replaceChildren(); return; }
-    $("#admin-identity").textContent = preview ? "Admin" : `${store.staffRole} · ${store.user.email}`;
+    $("#admin-identity").textContent = store.staffRole === "moderator" ? "Moderator" : "Admin";
     renderEntries(); renderTopics();
   }
   function init() {
     $("#admin-password-form").addEventListener("submit", async event => {
-      event.preventDefault(); const button = $("#admin-preview-login"), field = $("#admin-password"); button.disabled = true;
-      try { await store.enterPreviewAdmin(field.value); message("admin-login-status", ""); }
+      event.preventDefault(); const button = $("#admin-preview-login"), field = $("#admin-password"); button.disabled = true; button.textContent = "Logging in…";
+      try {
+        if (store.mode === "preview") await store.enterPreviewAdmin(field.value);
+        else await store.signIn(field.value);
+        message("admin-login-status", "");
+      }
       catch (error) { message("admin-login-status", error.message, true); field.focus(); }
-      finally { field.value = ""; button.disabled = false; }
-    });
-    $("#admin-email-form").addEventListener("submit", async event => {
-      event.preventDefault(); const button = event.currentTarget.querySelector("button"); button.disabled = true;
-      try { await store.signIn($("#admin-email").value.trim()); message("admin-login-status", "Check your email for the sign-in link."); }
-      catch (error) { message("admin-login-status", error.message, true); }
-      finally { button.disabled = false; }
+      finally { field.value = ""; button.disabled = false; button.textContent = "Log in"; }
     });
     $("#admin-signout").addEventListener("click", async () => { try { await store.signOut(); dirty = false; renderedRevision = -1; message("admin-login-status", "You’re signed out."); } catch (error) { message("admin-login-status", error.message, true); } });
     $("#admin-page-filter").addEventListener("change", () => { renderEntries(); message("admin-entry-status", ""); });
